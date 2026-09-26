@@ -1,5 +1,4 @@
-repo.jimwashkau.com {
-    encode zstd gzip
+(safe_access_log) {
     log {
         output stdout
         format filter {
@@ -7,5 +6,15 @@ repo.jimwashkau.com {
             request>headers>Referer delete
         }
     }
+}
+
+repo.jimwashkau.com {
+    import safe_access_log
+    encode zstd gzip
     reverse_proxy store:3000
+}
+
+http://repo.jimwashkau.com {
+    import safe_access_log
+    redir https://repo.jimwashkau.com{uri} permanent
 }
