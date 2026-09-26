@@ -7,6 +7,10 @@ services:
       - ./.private:/app/.private
     expose:
       - "3000"
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   caddy:
     image: caddy:2
@@ -21,6 +25,10 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "5"
 
 volumes:
   caddy_data:

@@ -16,7 +16,8 @@ const fakeStripe={
 };
 const licenseKeys=crypto.generateKeyPairSync('ec',{namedCurve:'prime256v1'});
 let testTime=Date.now();
-const app=createApp({licensePrivateKey:licenseKeys.privateKey,clock:()=>testTime,baseUrl:'http://127.0.0.1:3000',stripeKey:'sk_test_fake',priceId:'price_test_recorder',webhookSecret:'whsec_fake',authSecret:'a'.repeat(40),dbPath:path.join(tmp,'db.sqlite'),stripe:fakeStripe});
+const audits=[];
+const app=createApp({licensePrivateKey:licenseKeys.privateKey,clock:()=>testTime,baseUrl:'http://127.0.0.1:3000',stripeKey:'sk_test_fake',priceId:'price_test_recorder',webhookSecret:'whsec_fake',authSecret:'a'.repeat(40),dbPath:path.join(tmp,'db.sqlite'),stripe:fakeStripe,audit:line=>audits.push(JSON.parse(line))});
 const server=http.createServer(app.handler);
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const base=`http://127.0.0.1:${server.address().port}`;
@@ -34,6 +35,9 @@ const lease=async(device_id,start_trial,activation_code)=>{
 test('trial date persists for the same device',async()=>{
   const device='A1B2C3D4E5F60718293A4B5C6D7E8F90';
   assert.equal((await lease(device,false)).kind,'not_started');
+  assert.deepEqual({status:audits.at(-1).status,kind:audits.at(-1).kind,start_trial:audits.at(-1).start_trial,code_supplied:audits.at(-1).code_supplied},{status:200,kind:'not_started',start_trial:false,code_supplied:false});
+  assert.equal(audits.at(-1).device.length,12);
+  assert.ok(!JSON.stringify(audits.at(-1)).includes(device));
   const first=await lease(device,true);
   assert.equal(first.kind,'trial');
   assert.equal(first.trial_ends_at-first.issued_at,7*86400);

@@ -1,4 +1,11 @@
 repo.jimwashkau.com {
     encode zstd gzip
+    log {
+        output stdout
+        format filter {
+            request>uri regexp "(/download/)[^/?]+|\\?.*$" "${1}[redacted]"
+            request>headers>Referer delete
+        }
+    }
     reverse_proxy store:3000
 }

@@ -33,6 +33,12 @@ OpenAI Sites cannot enable financial transactions, so the live paid store runs o
 
 The Google Cloud project is `project-6c934194-73a4-42f4-914`. Its Debian 13 VM `jimwas-repo` is in `asia-southeast1-c`, with reserved IP `34.126.76.107`. Cloudflare's `repo` A record points to that IP in DNS-only mode. The live store runs at `https://repo.jimwashkau.com/`.
 
+### Live traffic monitor
+
+On the VPS, run `~/traffic` for a color-coded live view of web requests and license decisions. Run `~/traffic license` to focus on license traffic, `~/traffic errors` for HTTP errors, or `~/traffic --tail 100` to include more recent history. Press Ctrl+C to stop. The script is versioned at `tools/traffic.py`; after updating from GitHub, install it with `install -m 755 tools/traffic.py ~/traffic`. It reads the Caddy and store container logs through Docker Compose. Caddy access logging must be enabled in `Caddyfile` and the containers restarted with `sudo docker compose up -d --build` for new requests to appear.
+
+Each web line shows local time, HTTP status, method, path, HTTP/HTTPS protocol, elapsed time, response bytes, client IP, and user agent. License lines show the decision (`not_started`, `trial`, `expired`, or `paid`), whether a trial was requested, whether a purchase code was supplied, and a short keyed device fingerprint. Request bodies, purchase codes, raw device IDs, signatures, and URL query strings are never printed. The monitor only sees requests that reach Caddy; a direct request to the store container would not appear as a web line.
+
 The JW LLC live webhook endpoint `we_1UK1HI8apqxJlTTcNpE9wCPG` is enabled at `https://repo.jimwashkau.com/stripe/webhook` for the four events in step 4. `tools/activate_live.py` privately prompts for the restricted key and webhook signing secret during initial setup, verifies the price, and saves them in `commerce/.env` with owner-only permissions. Never put those secrets in Git. Complete a Stripe sandbox purchase and Sileo device test before accepting real customers.
 
 A website buyer gets a purchase code after webhook confirmation, then enters it during Sileo sign-in to bind the purchase to their device. A Sileo buyer can start Checkout from the package manager. Sileo receives an expiring one-time download URL only after the purchase is recorded. The package is never copied to the public repo directory.

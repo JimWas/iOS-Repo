@@ -54,11 +54,16 @@ export function createApp(config) {
     const orders = db.prepare("SELECT * FROM orders WHERE package_id=? AND status='paid' AND session_id IS NOT NULL").all(PACKAGE_ID);
     return orders.find(order => crypto.timingSafeEqual(Buffer.from(claimCode(order.session_id)), Buffer.from(code))) ?? null;
   };
-  const signedLease = (res, deviceId, kind, trialEndsAt=null) => {
+  const licenseAudit = (status, kind, deviceId, startTrial, codeSupplied) => {
+    const device = deviceId ? udidHash(deviceId.toUpperCase()).slice(0,12) : null;
+    (config.audit ?? console.log)(JSON.stringify({event:'license_lease',time:new Date().toISOString(),status,kind,device,start_trial:startTrial,code_supplied:codeSupplied}));
+  };
+  const signedLease = (res, deviceId, kind, trialEndsAt=null, startTrial=false, codeSupplied=false) => {
     const issuedAt=now();
     const validUntil=kind==='paid' ? issuedAt+7*86400 : kind==='trial' ? Math.min(issuedAt+7*86400,trialEndsAt) : issuedAt+300;
     const payload=JSON.stringify({version:1,package_id:PACKAGE_ID,device_hash:secretHash(deviceId.toUpperCase()),kind,issued_at:issuedAt,valid_until:validUntil,trial_ends_at:trialEndsAt});
     const signature=crypto.sign('sha256',Buffer.from(payload),signingKey).toString('base64');
+    licenseAudit(200,kind,deviceId,startTrial,codeSupplied);
     return json(res,200,{payload,signature});
   };
   const owns = (token) => !!db.prepare("SELECT 1 FROM orders WHERE package_id=? AND status='paid' AND udid_hash=? LIMIT 1").get(PACKAGE_ID,token.udid_hash);
@@ -91,24 +96,24 @@ export function createApp(config) {
         return json(res,200,{received:true});
       }
       if(pathname==='/api/license/lease' && req.method==='POST') {
-        if(!signingKey)return json(res,503,{error:'License service unavailable'});
+        if(!signingKey){licenseAudit(503,'unavailable',null,false,false);return json(res,503,{error:'License service unavailable'});}
         const body=await readJson(req);
         const deviceId=body.device_id;
-        if(typeof deviceId!=='string'||!/^[A-Za-z0-9-]{8,128}$/.test(deviceId)||typeof body.start_trial!=='boolean')return json(res,400,{error:'Invalid device request'});
+        if(typeof deviceId!=='string'||!/^[A-Za-z0-9-]{8,128}$/.test(deviceId)||typeof body.start_trial!=='boolean'){licenseAudit(400,'invalid_request',null,false,false);return json(res,400,{error:'Invalid device request'});}
         const device=udidHash(deviceId.toUpperCase());
         const aliases=[device,udidHash(deviceId.toLowerCase()),udidHash(deviceId)];
         const code=typeof body.activation_code==='string'?body.activation_code.trim().toUpperCase():'';
         if(code) {
-          if(!/^[0-9A-F]{24}$/.test(code))return json(res,400,{error:'Invalid purchase code'});
+          if(!/^[0-9A-F]{24}$/.test(code)){licenseAudit(400,'invalid_code',deviceId,body.start_trial,true);return json(res,400,{error:'Invalid purchase code'});}
           const order=paidOrderForCode(code);
-          if(!order||order.udid_hash&&!aliases.includes(order.udid_hash))return json(res,403,{error:'Purchase code unavailable for this device'});
+          if(!order||order.udid_hash&&!aliases.includes(order.udid_hash)){licenseAudit(403,'code_denied',deviceId,body.start_trial,true);return json(res,403,{error:'Purchase code unavailable for this device'});}
           db.prepare('UPDATE orders SET udid_hash=? WHERE id=? AND (udid_hash IS NULL OR udid_hash=?)').run(device,order.id,device);
         }
         const paid=db.prepare("SELECT 1 FROM orders WHERE package_id=? AND status='paid' AND udid_hash IN (?,?,?) LIMIT 1").get(PACKAGE_ID,...aliases);
-        if(paid)return signedLease(res,deviceId,'paid');
+        if(paid)return signedLease(res,deviceId,'paid',null,body.start_trial,!!code);
         if(body.start_trial)db.prepare('INSERT OR IGNORE INTO device_trials(udid_hash,started_at,expires_at) VALUES(?,?,?)').run(device,now(),now()+7*86400);
         const trial=db.prepare('SELECT expires_at FROM device_trials WHERE udid_hash=?').get(device);
-        return signedLease(res,deviceId,trial&&trial.expires_at>now()?'trial':trial?'expired':'not_started',trial?.expires_at??null);
+        return signedLease(res,deviceId,trial&&trial.expires_at>now()?'trial':trial?'expired':'not_started',trial?.expires_at??null,body.start_trial,!!code);
       }
       if(pathname==='/payment_endpoint' && req.method==='GET') return reply(res,200,origin+'\n');
       if(pathname==='/info' && req.method==='GET') return json(res,200,{name:'JimWas Repo',icon:`${origin}/images/jimwas-recorder-icon.png`,description:'Independent iOS tweaks',authentication_banner:{message:'Sign in to buy or restore JimWas Recorder.',button:'Sign in'}});
