@@ -1,0 +1,4 @@
+repo.jimwashkau.com {
+    encode zstd gzip
+    reverse_proxy store:3000
+}

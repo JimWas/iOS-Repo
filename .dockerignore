@@ -1,0 +1,10 @@
+**/node_modules
+**/.next
+**/.vinext
+**/dist
+**/out
+**/.git
+.private
+*.env
+*.env.*
+!commerce/.env.example

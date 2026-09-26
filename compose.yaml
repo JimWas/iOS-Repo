@@ -1,0 +1,27 @@
+services:
+  store:
+    build: .
+    restart: unless-stopped
+    env_file: commerce/.env
+    volumes:
+      - ./.private:/app/.private
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - store
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

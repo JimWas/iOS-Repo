@@ -1,0 +1,14 @@
+Package: com.jimwas.recorder
+Version: 1.9.5
+Architecture: iphoneos-arm64
+Maintainer: JimWas
+Depends: mobilesubstrate, preferenceloader
+Section: Tweaks
+Name: JimWas Recorder
+Author: JimWas
+Description: Background photo, video, and audio capture with configurable hardware triggers and Control Center modules.
+Tag: cydia::commercial
+Filename: private/com.jimwas.recorder_1.9.5_iphoneos-arm64.deb
+Size: 198620
+MD5sum: 1c2736b037c47fd7464901fc1ea5babd
+SHA256: 16ef2cadf4a1c9f772b8262fe3ef4f78c39185a258ffd6243d994d4604133f0c

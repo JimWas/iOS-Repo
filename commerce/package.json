@@ -1,0 +1,1 @@
+{"name":"jimwas-repo-commerce","version":"0.1.0","private":true,"type":"module","engines":{"node":">=26"},"scripts":{"start":"node server.js","test":"node --test"},"dependencies":{"stripe":"^22.6.0"}}

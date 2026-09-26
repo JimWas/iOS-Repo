@@ -1,0 +1,19 @@
+[
+  {
+    "slug": "com.jimwas.recorder",
+    "name": "JimWas Recorder",
+    "icon": "/images/jimwas-recorder-icon.png",
+    "banner": "/images/jimwas-recorder-banner-compatibility.png",
+    "category": "Tweaks",
+    "priceCents": 3499,
+    "currency": "usd",
+    "summary": "Capture video, photos, and audio with hardware button triggers and Control Center controls.",
+    "description": "JimWas Recorder supports background photo, video, and audio capture, configurable volume-button triggers, a companion app, and Control Center modules. Video can use the standard, Ultra Wide, or front camera where supported. Screen-off recording was tested on iOS 18.1.1 with Dopamine; iOS 16.3 was also tested. Other devices and firmware combinations have not been verified.",
+    "version": "1.9.5",
+    "ios": "iOS 15–16 and iOS 18–26 (rootless)",
+    "architecture": "iphoneos-arm64",
+    "packageId": "com.jimwas.recorder",
+    "sha256": "16ef2cadf4a1c9f772b8262fe3ef4f78c39185a258ffd6243d994d4604133f0c",
+    "sourceListing": "https://ko-fi.com/s/648175ff01"
+  }
+]
