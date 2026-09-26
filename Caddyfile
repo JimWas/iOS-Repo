@@ -2,7 +2,7 @@
     log {
         output stdout
         format filter {
-            request>uri regexp "(/download/)[^/?]+|[?].*$" "${1}[redacted]"
+            request>uri regexp "(/download/)[^/?]+|[?].*$" "${1}"
             request>headers>Referer delete
         }
     }

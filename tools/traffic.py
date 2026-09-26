@@ -101,8 +101,9 @@ def main():
     title = f"JimWas Repo  •  LIVE TRAFFIC  •  {args.view.upper()}"
     print((COLORS['bold'] + COLORS['cyan'] if color else '') + title + (COLORS['reset'] if color else ''), flush=True)
     print('Time is local to this VPS. Query strings, purchase codes, device IDs, and lease signatures are never displayed.', flush=True)
-    print('Ctrl+C to stop  |  views: ./traffic  ./traffic license  ./traffic errors  |  --tail 100', flush=True)
+    print('Ctrl+C to stop  |  views: ~/traffic  ~/traffic license  ~/traffic errors  |  --tail 100', flush=True)
     print('─' * 100, flush=True)
+    interrupted = False
     try:
         with subprocess.Popen(command, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1) as process:
             try:
@@ -116,12 +117,13 @@ def main():
                         continue
                     print(format_row(item, color), flush=True)
             except KeyboardInterrupt:
+                interrupted = True
                 process.terminate()
             finally:
                 if process.poll() is None:
                     process.terminate()
                 process.wait()
-            if process.returncode and process.returncode not in (-15, 130):
+            if process.returncode and not interrupted:
                 print(process.stderr.read().strip() or f'docker compose logs exited with {process.returncode}', file=sys.stderr)
                 return 1
     except FileNotFoundError as error:
