@@ -19,7 +19,8 @@ const randomToken = () => crypto.randomBytes(32).toString('base64url');
 const esc = (value) => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 export function createApp(config) {
-  const { baseUrl, stripeKey, priceId, webhookSecret, authSecret, dbPath, stripe = new Stripe(stripeKey, {apiVersion:'2026-08-26.dahlia'}) } = config;
+  const { baseUrl, stripeKey, priceId, webhookSecret, authSecret, dbPath, licensePrivateKey, licenseKeyPath, stripe = new Stripe(stripeKey, {apiVersion:'2026-08-26.dahlia'}) } = config;
+  const signingKey = licensePrivateKey ?? (licenseKeyPath && fs.existsSync(licenseKeyPath) ? fs.readFileSync(licenseKeyPath) : null);
   const origin = new URL(baseUrl).origin;
   fs.mkdirSync(path.dirname(dbPath), {recursive:true});
   const db = new DatabaseSync(dbPath);
@@ -27,8 +28,9 @@ export function createApp(config) {
     CREATE TABLE IF NOT EXISTS orders(id TEXT PRIMARY KEY, session_id TEXT UNIQUE, package_id TEXT NOT NULL, status TEXT NOT NULL, token_id TEXT, udid_hash TEXT, payment_intent TEXT, customer_email TEXT, created_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS intents(id_hash TEXT PRIMARY KEY, token_id TEXT NOT NULL, expires_at INTEGER NOT NULL, used INTEGER NOT NULL DEFAULT 0);
     CREATE TABLE IF NOT EXISTS tickets(id_hash TEXT PRIMARY KEY, token_id TEXT NOT NULL, expires_at INTEGER NOT NULL, used INTEGER NOT NULL DEFAULT 0);
-    CREATE INDEX IF NOT EXISTS orders_device ON orders(udid_hash, status);`);
-  const now = () => Math.floor(Date.now()/1000);
+    CREATE INDEX IF NOT EXISTS orders_device ON orders(udid_hash, status);
+    CREATE TABLE IF NOT EXISTS device_trials(udid_hash TEXT PRIMARY KEY, started_at INTEGER NOT NULL, expires_at INTEGER NOT NULL);`);
+  const now = () => Math.floor((config.clock ?? Date.now)()/1000);
   const udidHash = (udid) => crypto.createHmac('sha256', authSecret).update(udid).digest('hex');
   const claimCode = (session) => crypto.createHmac('sha256', authSecret).update(`claim:${session}`).digest('hex').slice(0,24).toUpperCase();
   const orderForCode = (code) => {
@@ -48,6 +50,17 @@ export function createApp(config) {
   };
   const readJson = async (req) => JSON.parse((await readBody(req)).toString('utf8'));
   const getToken = (value) => value && db.prepare('SELECT * FROM tokens WHERE token_hash=? AND revoked=0').get(secretHash(value));
+  const paidOrderForCode = (code) => {
+    const orders = db.prepare("SELECT * FROM orders WHERE package_id=? AND status='paid' AND session_id IS NOT NULL").all(PACKAGE_ID);
+    return orders.find(order => crypto.timingSafeEqual(Buffer.from(claimCode(order.session_id)), Buffer.from(code))) ?? null;
+  };
+  const signedLease = (res, deviceId, kind, trialEndsAt=null) => {
+    const issuedAt=now();
+    const validUntil=kind==='paid' ? issuedAt+7*86400 : kind==='trial' ? Math.min(issuedAt+7*86400,trialEndsAt) : issuedAt+300;
+    const payload=JSON.stringify({version:1,package_id:PACKAGE_ID,device_hash:secretHash(deviceId.toUpperCase()),kind,issued_at:issuedAt,valid_until:validUntil,trial_ends_at:trialEndsAt});
+    const signature=crypto.sign('sha256',Buffer.from(payload),signingKey).toString('base64');
+    return json(res,200,{payload,signature});
+  };
   const owns = (token) => !!db.prepare("SELECT 1 FROM orders WHERE package_id=? AND status='paid' AND udid_hash=? LIMIT 1").get(PACKAGE_ID,token.udid_hash);
   const sendFile = (res, file, type, download=false) => {
     const st=fs.statSync(file);res.writeHead(200,{'content-type':type,'content-length':st.size,'x-content-type-options':'nosniff','cache-control':'no-store',...(download?{'content-disposition':`attachment; filename="${PACKAGE_FILE}"`}:{})});fs.createReadStream(file).pipe(res);
@@ -76,6 +89,26 @@ export function createApp(config) {
           db.prepare("UPDATE orders SET status='refunded' WHERE payment_intent=?").run(event.data.object.payment_intent);
         }
         return json(res,200,{received:true});
+      }
+      if(pathname==='/api/license/lease' && req.method==='POST') {
+        if(!signingKey)return json(res,503,{error:'License service unavailable'});
+        const body=await readJson(req);
+        const deviceId=body.device_id;
+        if(typeof deviceId!=='string'||!/^[A-Za-z0-9-]{8,128}$/.test(deviceId)||typeof body.start_trial!=='boolean')return json(res,400,{error:'Invalid device request'});
+        const device=udidHash(deviceId.toUpperCase());
+        const aliases=[device,udidHash(deviceId.toLowerCase()),udidHash(deviceId)];
+        const code=typeof body.activation_code==='string'?body.activation_code.trim().toUpperCase():'';
+        if(code) {
+          if(!/^[0-9A-F]{24}$/.test(code))return json(res,400,{error:'Invalid purchase code'});
+          const order=paidOrderForCode(code);
+          if(!order||order.udid_hash&&!aliases.includes(order.udid_hash))return json(res,403,{error:'Purchase code unavailable for this device'});
+          db.prepare('UPDATE orders SET udid_hash=? WHERE id=? AND (udid_hash IS NULL OR udid_hash=?)').run(device,order.id,device);
+        }
+        const paid=db.prepare("SELECT 1 FROM orders WHERE package_id=? AND status='paid' AND udid_hash IN (?,?,?) LIMIT 1").get(PACKAGE_ID,...aliases);
+        if(paid)return signedLease(res,deviceId,'paid');
+        if(body.start_trial)db.prepare('INSERT OR IGNORE INTO device_trials(udid_hash,started_at,expires_at) VALUES(?,?,?)').run(device,now(),now()+7*86400);
+        const trial=db.prepare('SELECT expires_at FROM device_trials WHERE udid_hash=?').get(device);
+        return signedLease(res,deviceId,trial&&trial.expires_at>now()?'trial':trial?'expired':'not_started',trial?.expires_at??null);
       }
       if(pathname==='/payment_endpoint' && req.method==='GET') return reply(res,200,origin+'\n');
       if(pathname==='/info' && req.method==='GET') return json(res,200,{name:'JimWas Repo',icon:`${origin}/images/jimwas-recorder-icon.png`,description:'Independent iOS tweaks',authentication_banner:{message:'Sign in to buy or restore JimWas Recorder.',button:'Sign in'}});
@@ -127,8 +160,8 @@ export function createApp(config) {
         const session=url.searchParams.get('session_id')??'';const order=db.prepare('SELECT * FROM orders WHERE session_id=?').get(session);
         if(!order)return page(res,404,'Order not found','<p>Contact support with your Stripe receipt.</p>');
         if(order.status!=='paid')return page(res,202,'Payment processing','<p>Stripe is confirming the payment. Refresh this page in a moment.</p>');
-        if(order.token_id)return page(res,200,'Purchase complete','<p>Return to Sileo to install JimWas Recorder.</p><p><a href="sileo://payment_completed">Return to Sileo</a></p>');
-        return page(res,200,'Purchase complete',`<p>Your JimWas Recorder purchase code is:</p><p><code>${claimCode(session)}</code></p><p>In Sileo, add the JimWas Repo source, choose Sign In, and enter this code to unlock your download. This code is for your device; keep it private.</p>`);
+        if(order.token_id)return page(res,200,'Purchase complete',`<p>Your JimWas Recorder activation code is:</p><p><code>${claimCode(session)}</code></p><p>Install the full package in Sileo, then enter this code in the JimWas Recorder app if it does not activate automatically.</p><p><a href="sileo://payment_completed">Return to Sileo</a></p>`);
+        return page(res,200,'Purchase complete',`<p>Your JimWas Recorder activation code is:</p><p><code>${claimCode(session)}</code></p><p>In Sileo, add the JimWas Repo source, choose Sign In, and enter this code to unlock your download. This code is for your device; keep it private.</p>`);
       }
       const download=pathname.match(/^\/download\/([A-Za-z0-9_-]+)$/);
       if(download && ['GET','HEAD'].includes(req.method)) {
@@ -168,6 +201,6 @@ if(process.argv[1]===new URL(import.meta.url).pathname) {
   const file=path.join(PRIVATE,PACKAGE_FILE);
   if(!fs.existsSync(file)||secretHash(fs.readFileSync(file))!==EXPECTED_HASH)throw new Error('Private package missing or hash mismatch');
   if(!fs.existsSync(path.join(WEB,'index.html')))throw new Error('Build the standalone storefront first');
-  const app=createApp({baseUrl:process.env.BASE_URL,stripeKey:process.env.STRIPE_SECRET_KEY,priceId:process.env.STRIPE_PRICE_ID,webhookSecret:process.env.STRIPE_WEBHOOK_SECRET,authSecret:process.env.AUTH_SECRET,dbPath:process.env.DB_PATH||path.join(ROOT,'.private','commerce.sqlite')});
+  const app=createApp({baseUrl:process.env.BASE_URL,stripeKey:process.env.STRIPE_SECRET_KEY,priceId:process.env.STRIPE_PRICE_ID,webhookSecret:process.env.STRIPE_WEBHOOK_SECRET,authSecret:process.env.AUTH_SECRET,dbPath:process.env.DB_PATH||path.join(ROOT,'.private','commerce.sqlite'),licenseKeyPath:process.env.LICENSE_SIGNING_KEY_PATH||path.join(ROOT,'.private','license-signing-key.pem')});
   http.createServer(app.handler).listen(Number(process.env.PORT||3000),()=>console.log('JimWas commerce service ready'));
 }

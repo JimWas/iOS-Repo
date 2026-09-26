@@ -14,12 +14,36 @@ const fakeStripe={
   checkout:{sessions:{create:async (input)=>{created=input;checkoutCount++;return {id:checkoutCount===1?'cs_test_recorder':'cs_test_web',url:'https://checkout.stripe.com/test'}}}},
   webhooks:{constructEvent:(raw,signature)=>{if(signature!=='valid')throw new Error('bad signature');return JSON.parse(raw.toString())}}
 };
-const app=createApp({baseUrl:'http://127.0.0.1:3000',stripeKey:'sk_test_fake',priceId:'price_test_recorder',webhookSecret:'whsec_fake',authSecret:'a'.repeat(40),dbPath:path.join(tmp,'db.sqlite'),stripe:fakeStripe});
+const licenseKeys=crypto.generateKeyPairSync('ec',{namedCurve:'prime256v1'});
+let testTime=Date.now();
+const app=createApp({licensePrivateKey:licenseKeys.privateKey,clock:()=>testTime,baseUrl:'http://127.0.0.1:3000',stripeKey:'sk_test_fake',priceId:'price_test_recorder',webhookSecret:'whsec_fake',authSecret:'a'.repeat(40),dbPath:path.join(tmp,'db.sqlite'),stripe:fakeStripe});
 const server=http.createServer(app.handler);
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const base=`http://127.0.0.1:${server.address().port}`;
 const call=(url,options={})=>fetch(base+url,{redirect:'manual',...options});
 const post=(url,body)=>call(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+
+const lease=async(device_id,start_trial,activation_code)=>{
+  const response=await post('/api/license/lease',{device_id,start_trial,...(activation_code?{activation_code}:{})});
+  assert.equal(response.status,200);
+  const body=await response.json();
+  assert.ok(crypto.verify('sha256',Buffer.from(body.payload),licenseKeys.publicKey,Buffer.from(body.signature,'base64')));
+  return JSON.parse(body.payload);
+};
+
+test('trial date persists for the same device',async()=>{
+  const device='A1B2C3D4E5F60718293A4B5C6D7E8F90';
+  assert.equal((await lease(device,false)).kind,'not_started');
+  const first=await lease(device,true);
+  assert.equal(first.kind,'trial');
+  assert.equal(first.trial_ends_at-first.issued_at,7*86400);
+  const reinstalled=await lease(device,true);
+  assert.equal(reinstalled.trial_ends_at,first.trial_ends_at);
+  testTime+=8*86400*1000;
+  const expired=await lease(device,true);
+  assert.equal(expired.kind,'expired');
+  assert.equal(expired.trial_ends_at,first.trial_ends_at);
+});
 
 test('paid package requires verified purchase and one-time download URL',async()=>{
   assert.equal((await call('/packages')).status,200);
@@ -49,6 +73,7 @@ test('paid package requires verified purchase and one-time download URL',async()
   assert.equal((await post('/package/com.jimwas.recorder/authorize_download',{token})).status,403);
   const verified=await call('/stripe/webhook',{method:'POST',headers:{'stripe-signature':'valid'},body:JSON.stringify(webhook)});
   assert.equal(verified.status,200);
+  assert.equal((await lease('0123456789abcdef0123456789abcdef',false)).kind,'paid');
   const authorization=await post('/package/com.jimwas.recorder/authorize_download',{token});
   const downloadUrl=(await authorization.json()).url.replace('127.0.0.1:3000',`127.0.0.1:${server.address().port}`);
   const head=await fetch(downloadUrl,{method:'HEAD'});assert.equal(head.status,200);
@@ -74,6 +99,8 @@ test('website purchase code binds a paid order to one device',async()=>{
   const claim=await call('/authenticate',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({udid:'1234567890abcdef1234567890abcdef',code})});
   assert.equal(claim.status,303);
   const token=new URL(claim.headers.get('location')).searchParams.get('token');
+  assert.equal((await lease('1234567890abcdef1234567890abcdef',false,code)).kind,'paid');
+  assert.equal((await post('/api/license/lease',{device_id:'fedcba0987654321fedcba0987654321',start_trial:false,activation_code:code})).status,403);
   assert.equal((await post('/package/com.jimwas.recorder/info',{token})).status,200);
   assert.equal((await(await post('/package/com.jimwas.recorder/info',{token})).json()).purchased,true);
   const second=await call('/authenticate',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({udid:'fedcba0987654321fedcba0987654321',code})});
