@@ -14,7 +14,7 @@ SOURCE = ROOT / "repo" / "free"
 OUTPUT = ROOT / "repo" / "public"
 CATALOG = ROOT / "storefront" / "data" / "packages.json"
 PRIVATE = ROOT / ".private" / "packages"
-FIELDS = ("Package", "Version", "Architecture", "Maintainer", "Depends", "Section", "Priority", "Name", "Author", "Description", "Depiction", "SileoDepiction", "Icon", "Tag")
+FIELDS = ("Package", "Version", "Architecture", "Maintainer", "Depends", "Conflicts", "Replaces", "Section", "Priority", "Name", "Author", "Description", "Depiction", "SileoDepiction", "Icon", "Tag")
 
 def digest(path, algorithm):
     h = hashlib.new(algorithm)
@@ -41,7 +41,9 @@ def main():
     SOURCE.mkdir(parents=True, exist_ok=True)
     OUTPUT.mkdir(parents=True, exist_ok=True)
     entries = []
-    catalog = [item for item in json.loads(CATALOG.read_text()) if item.get("priceCents", 0) > 0]
+    current_catalog = json.loads(CATALOG.read_text())
+    catalog = [item for item in current_catalog if item.get("priceCents", 0) > 0]
+    free_details = {item["slug"]: item for item in current_catalog if item.get("priceCents", 0) == 0}
     seen = set()
     for deb in sorted(SOURCE.glob("*.deb")):
         fields = control_fields(deb)
@@ -61,7 +63,7 @@ def main():
         lines += [f"Filename: {deb.name}", f"Size: {target.stat().st_size}", f"MD5sum: {digest(target, 'md5')}", f"SHA256: {digest(target, 'sha256')}"]
         entries.append("\n".join(lines))
         description = fields.get("Description", "")
-        catalog.append({"slug": package_id, "name": fields.get("Name", package_id), "icon": "✦", "category": fields.get("Section", "Tweaks"), "priceCents": 0, "summary": description.splitlines()[0], "description": description, "version": fields["Version"]})
+        catalog.append({**free_details.get(package_id, {}), "slug": package_id, "name": fields.get("Name", package_id), "category": fields.get("Section", "Tweaks"), "priceCents": 0, "summary": free_details.get(package_id, {}).get("summary", description.splitlines()[0]), "description": free_details.get(package_id, {}).get("description", description), "version": fields["Version"], "architecture": fields["Architecture"], "filename": deb.name})
     manifest_path = PRIVATE / "manifest.json"
     if manifest_path.exists():
         for package_id, item in json.loads(manifest_path.read_text()).items():

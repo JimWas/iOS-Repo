@@ -1,3 +1,19 @@
+Package: com.jimwas.recorder.trial
+Version: 1.9.5~trial1
+Architecture: iphoneos-arm64
+Maintainer: JimWas
+Depends: mobilesubstrate, preferenceloader
+Conflicts: com.jimwas.recorder
+Replaces: com.jimwas.recorder
+Section: Tweaks
+Name: JimWas Recorder Trial
+Author: JimWas
+Description: Seven-day trial of JimWas Recorder for iOS 18 with background photo, video, and audio capture.
+Filename: com.jimwas.recorder.trial_1.9.5~trial1_iphoneos-arm64.deb
+Size: 201944
+MD5sum: 17ecf332e9ddfea4541a6d481e890e76
+SHA256: 7bca9de5f86ffd528074c15d705d7a54127bc5df36eebafdccaed6f3e9259df7
+
 Package: com.jimwas.recorder
 Version: 1.9.5
 Architecture: iphoneos-arm64

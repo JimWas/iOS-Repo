@@ -11,6 +11,10 @@ A personal jailbreak tweak storefront and APT repository. The storefront lives i
 
 The generator rejects packages marked `Tag: cydia::commercial`, because publishing their `.deb` files at public URLs would bypass payment.
 
+## JimWas Recorder iOS 18 trial
+
+The free seven-day trial is published as `com.jimwas.recorder.trial` at version `1.9.5~trial1`. Its `.deb` is in `repo/free/` and copied into `repo/public/` by `tools/build_repo.py`. The original build used the paid package ID; the repository copy changes only its Debian control metadata so Sileo can list the free trial and paid package separately. The trial declares a conflict with the paid package because both install the same app and tweak files. Its signed lease still uses the Recorder app's original `com.jimwas.recorder` identifier. On the VPS, copy the generated public APT files and trial `.deb`, the catalog, the updated storefront page, and `commerce/server.js`, then rebuild the store container. Check the trial page, APT index, and direct `.deb` download after deployment.
+
 ## Paid packages
 
 Paid packages use the self-hosted commerce service below. Keep paid `.deb` files in private storage. Never copy them to `repo/public/` or the storefront's `public/` folder.

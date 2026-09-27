@@ -10,10 +10,26 @@
     "summary": "Capture video, photos, and audio with hardware button triggers and Control Center controls.",
     "description": "JimWas Recorder supports background photo, video, and audio capture, configurable volume-button triggers, a companion app, and Control Center modules. Video can use the standard, Ultra Wide, or front camera where supported. Screen-off recording was tested on iOS 18.1.1 with Dopamine; iOS 16.3 was also tested. Other devices and firmware combinations have not been verified.",
     "version": "1.9.5",
-    "ios": "iOS 15–16 and iOS 18–26 (rootless)",
+    "ios": "iOS 15\u201316 and iOS 18\u201326 (rootless)",
     "architecture": "iphoneos-arm64",
     "packageId": "com.jimwas.recorder",
     "sha256": "16ef2cadf4a1c9f772b8262fe3ef4f78c39185a258ffd6243d994d4604133f0c",
     "sourceListing": "https://ko-fi.com/s/648175ff01"
+  },
+  {
+    "slug": "com.jimwas.recorder.trial",
+    "name": "JimWas Recorder Trial",
+    "icon": "/images/jimwas-recorder-icon.png",
+    "banner": "/images/jimwas-recorder-banner-compatibility.png",
+    "category": "Tweaks",
+    "priceCents": 0,
+    "currency": "usd",
+    "summary": "Try JimWas Recorder free for seven days on a jailbroken iOS 18 device.",
+    "description": "Try background photo, video, and audio capture, hardware button triggers, and Control Center modules for seven days. Requires a jailbroken iOS 18 device and a connection to the JimWas Repo license service to start the trial.",
+    "version": "1.9.5~trial1",
+    "ios": "iOS 18 (rootless)",
+    "architecture": "iphoneos-arm64",
+    "packageId": "com.jimwas.recorder.trial",
+    "filename": "com.jimwas.recorder.trial_1.9.5~trial1_iphoneos-arm64.deb"
   }
 ]

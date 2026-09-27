@@ -179,6 +179,10 @@ export function createApp(config) {
         return sendFile(res,path.join(PRIVATE,PACKAGE_FILE),'application/vnd.debian.binary-package',true);
       }
       if(pathname==='/Packages'||pathname==='/Packages.gz'||pathname==='/Release')return sendFile(res,path.join(REPO,pathname.slice(1)),pathname.endsWith('.gz')?'application/gzip':'text/plain; charset=utf-8');
+      if(req.method==='GET' && /^\/[a-z0-9][a-z0-9+._~-]*\.deb$/i.test(pathname)) {
+        const file=path.join(REPO,pathname.slice(1));
+        if(fs.existsSync(file)&&fs.statSync(file).isFile())return sendFile(res,file,'application/vnd.debian.binary-package');
+      }
       if(pathname.startsWith('/private/'))return reply(res,403,'Purchase required');
       if(req.method==='GET'||req.method==='HEAD') {
         const relative=pathname.replace(/^\//,'');

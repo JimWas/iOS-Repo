@@ -90,6 +90,21 @@ test('paid package requires verified purchase and one-time download URL',async()
   assert.equal((await post('/package/com.jimwas.recorder/authorize_download',{token})).status,403);
 });
 
+test('trial is free to download while paid files stay private',async()=>{
+  const filename='com.jimwas.recorder.trial_1.9.5~trial1_iphoneos-arm64.deb';
+  const page=await call('/packages/com.jimwas.recorder.trial');
+  assert.equal(page.status,200);
+  assert.match(await page.text(),/Download free trial/);
+  const index=await(await call('/Packages')).text();
+  assert.match(index,/Package: com\.jimwas\.recorder\.trial/);
+  assert.match(index,new RegExp(`Filename: ${filename.replaceAll('.', '\\.').replace('~', '\\~')}`));
+  const response=await call(`/${filename}`);
+  assert.equal(response.status,200);
+  assert.equal(response.headers.get('content-type'),'application/vnd.debian.binary-package');
+  assert.equal(Buffer.from(await response.arrayBuffer()).subarray(0,8).toString(),'!<arch>\n');
+  assert.equal((await call('/private/com.jimwas.recorder_1.9.5_iphoneos-arm64.deb')).status,403);
+});
+
 test('website purchase code binds a paid order to one device',async()=>{
   const buy=await call('/buy/com.jimwas.recorder',{method:'POST',headers:{origin:'http://127.0.0.1:3000'}});
   assert.equal(buy.status,303);

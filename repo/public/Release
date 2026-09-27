@@ -4,11 +4,11 @@ Suite: stable
 Codename: ios
 Architectures: iphoneos-arm64 iphoneos-arm
 Components: main
-Date: Sat, 26 Sep 2026 17:25:38 GMT
+Date: Sun, 27 Sep 2026 03:16:03 GMT
 Description: Independent iOS tweaks
 MD5Sum:
- cb23c84f991509818311bed157159610              521 Packages
- a738a80f4d5b071a8e1382fdb993365a              385 Packages.gz
+ e1ecc5e5ed76b09f58aff6139f3aeea7             1093 Packages
+ 875feb96dbe1dd628af5222a649ec29d              543 Packages.gz
 SHA256:
- 42d65c5dd21ac75a77a5f99bf91c907d8d72ab39ab049ef6b2f5f824249279da              521 Packages
- b225a7a33782b72706d18a9bfc820ad0bdabdc53224aa901ef0c2f44611a21c8              385 Packages.gz
+ c8bb70b6213bcdf49daa037d76d1de3d9280848d6ee57771319aeb99e88ebc17             1093 Packages
+ e4dd55ca034935f5f53ca2a4f42e4efc323d8ad8e9f31b24bf4891e21c5db660              543 Packages.gz
