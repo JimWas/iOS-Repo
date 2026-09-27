@@ -63,6 +63,14 @@ test('paid package requires verified purchase and one-time download URL',async()
   const callback=new URL(signIn.headers.get('location'));
   const token=callback.searchParams.get('token');
   const paymentSecret=callback.searchParams.get('payment_secret');
+  assert.match(token,/^BEARER /);
+  const profile=await post('/user_info',{token});
+  assert.equal(profile.status,200);
+  assert.deepEqual(await profile.json(),{items:[],user:{name:'JimWas Repo customer',email:''}});
+  const bareToken=token.slice('BEARER '.length);
+  assert.equal((await post('/user_info',{token:bareToken})).status,200);
+  assert.equal((await post('/package/com.jimwas.recorder/info',{token})).status,200);
+  assert.equal((await(await post('/package/com.jimwas.recorder/info',{token})).json()).price,'34.99');
   assert.equal((await post('/package/com.jimwas.recorder/authorize_download',{token})).status,403);
   const purchase=await post('/package/com.jimwas.recorder/purchase',{token,payment_secret:paymentSecret});
   const action=await purchase.json();
@@ -77,6 +85,7 @@ test('paid package requires verified purchase and one-time download URL',async()
   assert.equal((await post('/package/com.jimwas.recorder/authorize_download',{token})).status,403);
   const verified=await call('/stripe/webhook',{method:'POST',headers:{'stripe-signature':'valid'},body:JSON.stringify(webhook)});
   assert.equal(verified.status,200);
+  assert.deepEqual(await(await post('/user_info',{token})).json(),{items:['com.jimwas.recorder'],user:{name:'JimWas Repo customer',email:'buyer@example.com'}});
   assert.equal((await lease('0123456789abcdef0123456789abcdef',false)).kind,'paid');
   const authorization=await post('/package/com.jimwas.recorder/authorize_download',{token});
   const downloadUrl=(await authorization.json()).url.replace('127.0.0.1:3000',`127.0.0.1:${server.address().port}`);
@@ -118,6 +127,7 @@ test('website purchase code binds a paid order to one device',async()=>{
   const claim=await call('/authenticate',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({udid:'1234567890abcdef1234567890abcdef',code})});
   assert.equal(claim.status,303);
   const token=new URL(claim.headers.get('location')).searchParams.get('token');
+  assert.deepEqual(await(await post('/user_info',{token})).json(),{items:['com.jimwas.recorder'],user:{name:'JimWas Repo customer',email:'buyer@example.com'}});
   assert.equal((await lease('1234567890abcdef1234567890abcdef',false,code)).kind,'paid');
   assert.equal((await post('/api/license/lease',{device_id:'fedcba0987654321fedcba0987654321',start_trial:false,activation_code:code})).status,403);
   assert.equal((await post('/package/com.jimwas.recorder/info',{token})).status,200);

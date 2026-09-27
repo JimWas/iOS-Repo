@@ -49,7 +49,11 @@ export function createApp(config) {
     return Buffer.concat(chunks);
   };
   const readJson = async (req) => JSON.parse((await readBody(req)).toString('utf8'));
-  const getToken = (value) => value && db.prepare('SELECT * FROM tokens WHERE token_hash=? AND revoked=0').get(secretHash(value));
+  const bareToken = (value) => typeof value === 'string' ? value.replace(/^BEARER\s+/i,'').trim() : '';
+  const getToken = (value) => {
+    const token=bareToken(value);
+    return token && db.prepare('SELECT * FROM tokens WHERE token_hash=? AND revoked=0').get(secretHash(token));
+  };
   const paidOrderForCode = (code) => {
     const orders = db.prepare("SELECT * FROM orders WHERE package_id=? AND status='paid' AND session_id IS NOT NULL").all(PACKAGE_ID);
     return orders.find(order => crypto.timingSafeEqual(Buffer.from(claimCode(order.session_id)), Buffer.from(code))) ?? null;
@@ -129,15 +133,15 @@ export function createApp(config) {
         if(code) {if(!/^[0-9A-F]{24}$/.test(code)) return page(res,400,'Invalid code','<p>Check the purchase code and try again.</p>');const order=orderForCode(code);if(!order||order.udid_hash&&order.udid_hash!==device) return page(res,403,'Code unavailable','<p>This code is invalid or already linked to another device.</p>');db.prepare('UPDATE orders SET udid_hash=? WHERE id=? AND (udid_hash IS NULL OR udid_hash=?)').run(device,order.id,device)}
         const token=randomToken(),paymentSecret=randomToken(),id=crypto.randomUUID();
         db.prepare('INSERT INTO tokens(id,token_hash,payment_hash,udid_hash,created_at) VALUES(?,?,?,?,?)').run(id,secretHash(token),secretHash(paymentSecret),device,now());
-        return redirect(res,`sileo://authentication_success?token=${encodeURIComponent(token)}&payment_secret=${encodeURIComponent(paymentSecret)}`);
+        return redirect(res,`sileo://authentication_success?token=${encodeURIComponent(`BEARER ${token}`)}&payment_secret=${encodeURIComponent(paymentSecret)}`);
       }
-      if(pathname==='/user_info' && req.method==='POST') {const body=await readJson(req);const token=getToken(body.token);if(!token)return json(res,401,{error:'Sign in again',invalidate:true});return json(res,200,{items:owns(token)?[PACKAGE_ID]:[],user:{name:'JimWas Repo customer'}})}
-      if(pathname==='/sign_out' && req.method==='POST') {const body=await readJson(req);db.prepare('UPDATE tokens SET revoked=1 WHERE token_hash=?').run(secretHash(body.token??''));return json(res,200,{success:true})}
+      if(pathname==='/user_info' && req.method==='POST') {const body=await readJson(req);const token=getToken(body.token);if(!token)return json(res,401,{error:'Sign in again',invalidate:true});const order=db.prepare("SELECT customer_email FROM orders WHERE package_id=? AND status='paid' AND udid_hash=? AND customer_email IS NOT NULL ORDER BY created_at DESC LIMIT 1").get(PACKAGE_ID,token.udid_hash);return json(res,200,{items:owns(token)?[PACKAGE_ID]:[],user:{name:'JimWas Repo customer',email:order?.customer_email??''}})}
+      if(pathname==='/sign_out' && req.method==='POST') {const body=await readJson(req);db.prepare('UPDATE tokens SET revoked=1 WHERE token_hash=?').run(secretHash(bareToken(body.token)));return json(res,200,{success:true})}
       const packageRoute=pathname.match(/^\/package\/([^/]+)\/(info|purchase|authorize_download)$/);
       if(packageRoute && req.method==='POST') {
         if(packageRoute[1]!==PACKAGE_ID) return json(res,404,{error:'Package unavailable'});
         const body=await readJson(req),token=getToken(body.token);
-        if(packageRoute[2]==='info')return json(res,200,{price:'$34.99',purchased:token?owns(token):false,available:true});
+        if(packageRoute[2]==='info')return json(res,200,{price:'34.99',purchased:token?owns(token):false,available:true});
         if(!token)return json(res,401,{error:'Sign in to continue',invalidate:true});
         if(packageRoute[2]==='purchase') {
           if(!body.payment_secret||secretHash(body.payment_secret)!==token.payment_hash)return json(res,403,{error:'Payment authorization failed'});
