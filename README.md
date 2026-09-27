@@ -25,6 +25,12 @@ The first paid package is **JimWas Recorder** (`com.jimwas.recorder`, rootless `
 
 The live JW LLC Stripe account has product `prod_VKdfgaaSfEZ6G2` and one-time USD price `price_1UJyO18apqxJlTTcIMznbGUs` (3499 cents). No payment link is exposed on the Sites preview.
 
+## Instagram Virtual Cam (IG VCAM) Supporter Edition 0.1.1
+
+The second paid package is `com.yourcompany.vcam` at **$34.99 USD**. The identifier is retained from the tweak source so existing installs can upgrade. The source build from `/Users/jimwashkau/Downloads/vcam-ios/vcam-ios` was repackaged only to label it Supporter Edition in Sileo and describe that the purchase supports JimWas development; its installed tweak files were not changed. The package remains in `.private/packages/` and is verified by SHA-256 `c54ee49436cdd40c0fc3f6277c1cff14749bdec0f79ed2595ab528efd96c0116`. The public APT index contains only metadata and marks it commercial. The source fork credits Ethan Arbuckle and is linked from the listing. Instagram video and audio were verified on iOS 18.1.1 with Dopamine; other iOS versions have not been retested in this fork.
+
+The JW LLC live Stripe product is `prod_VKuWdu38Yh8dGO` with a one-time $34.99 USD price `price_1UKEh08apqxJlTTcesL5snJh`. Set `STRIPE_IG_VCAM_PRICE_ID` in the VPS's private `commerce/.env` file. The existing restricted API key needs Checkout Sessions **Write** and Prices **Read** for this product, and the existing webhook handles its payments. Before restarting, copy the private `.deb` and updated manifest directly to the VPS `.private/packages/`; never push those files to Git. Run `python3 tools/build_repo.py` on the VPS after updating the private manifest, then rebuild the store. Verify the listing, Sileo package info, Checkout price, webhook fulfillment, and one-time authorized download. Do not launch checkout until the Stripe price and private file are both in place.
+
 ## Self-hosted paid store
 
 OpenAI Sites cannot enable financial transactions, so the live paid store runs on a Debian Google Cloud VM at `repo.jimwashkau.com`. `commerce/server.js` serves the exported storefront, APT metadata, Sileo payment-provider endpoints, Stripe Checkout, verified webhook fulfillment, and one-time authorized package downloads. Caddy provides HTTPS in `compose.yaml`. The SQLite database and paid package stay outside public web assets.

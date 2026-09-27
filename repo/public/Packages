@@ -28,3 +28,18 @@ Filename: private/com.jimwas.recorder_1.9.5_iphoneos-arm64.deb
 Size: 198620
 MD5sum: 1c2736b037c47fd7464901fc1ea5babd
 SHA256: 16ef2cadf4a1c9f772b8262fe3ef4f78c39185a258ffd6243d994d4604133f0c
+
+Package: com.yourcompany.vcam
+Version: 0.1.1
+Architecture: iphoneos-arm64
+Maintainer: JimWas
+Depends: ellekit, preferenceloader
+Section: Tweaks
+Name: Instagram Virtual Cam (IG VCAM) Supporter Edition
+Author: Ethan Arbuckle, JimWas
+Description: Select an MP4 or MOV as the Instagram camera feed and recording audio on a jailbroken iPhone. This edition supports JimWas development.
+Tag: cydia::commercial
+Filename: private/com.yourcompany.vcam_0.1.1_iphoneos-arm64.deb
+Size: 21112
+MD5sum: 7d21dfef94b797d62722c326ee100e45
+SHA256: c54ee49436cdd40c0fc3f6277c1cff14749bdec0f79ed2595ab528efd96c0116

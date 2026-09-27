@@ -11,13 +11,13 @@ const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'jimwas-commerce-'));
 let created;
 let checkoutCount=0;
 const fakeStripe={
-  checkout:{sessions:{create:async (input)=>{created=input;checkoutCount++;return {id:checkoutCount===1?'cs_test_recorder':'cs_test_web',url:'https://checkout.stripe.com/test'}}}},
+  checkout:{sessions:{create:async (input)=>{created=input;checkoutCount++;return {id:['cs_test_recorder','cs_test_web','cs_test_vcam'][checkoutCount-1],url:'https://checkout.stripe.com/test'}}}},
   webhooks:{constructEvent:(raw,signature)=>{if(signature!=='valid')throw new Error('bad signature');return JSON.parse(raw.toString())}}
 };
 const licenseKeys=crypto.generateKeyPairSync('ec',{namedCurve:'prime256v1'});
 let testTime=Date.now();
 const audits=[];
-const app=createApp({licensePrivateKey:licenseKeys.privateKey,clock:()=>testTime,baseUrl:'http://127.0.0.1:3000',stripeKey:'sk_test_fake',priceId:'price_test_recorder',webhookSecret:'whsec_fake',authSecret:'a'.repeat(40),dbPath:path.join(tmp,'db.sqlite'),stripe:fakeStripe,audit:line=>audits.push(JSON.parse(line))});
+const app=createApp({licensePrivateKey:licenseKeys.privateKey,clock:()=>testTime,baseUrl:'http://127.0.0.1:3000',stripeKey:'sk_test_fake',priceId:'price_test_recorder',priceIds:{'com.yourcompany.vcam':'price_test_vcam'},webhookSecret:'whsec_fake',authSecret:'a'.repeat(40),dbPath:path.join(tmp,'db.sqlite'),stripe:fakeStripe,audit:line=>audits.push(JSON.parse(line))});
 const server=http.createServer(app.handler);
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const base=`http://127.0.0.1:${server.address().port}`;
@@ -134,6 +134,40 @@ test('website purchase code binds a paid order to one device',async()=>{
   assert.equal((await(await post('/package/com.jimwas.recorder/info',{token})).json()).purchased,true);
   const second=await call('/authenticate',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({udid:'fedcba0987654321fedcba0987654321',code})});
   assert.equal(second.status,403);
+});
+
+test('IG VCAM has its own paid checkout, ownership, and private download',async()=>{
+  const id='com.yourcompany.vcam';
+  const page=await call(`/packages/${id}`);
+  assert.equal(page.status,200);
+  assert.match(await page.text(),/IG VCAM/);
+  assert.match(await(await call('/Packages')).text(),/Package: com\.yourcompany\.vcam[\s\S]*Tag: cydia::commercial/);
+  assert.equal((await call('/private/com.yourcompany.vcam_0.1.1_iphoneos-arm64.deb')).status,403);
+  const signIn=await call('/authenticate',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:'udid=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'});
+  const token=new URL(signIn.headers.get('location')).searchParams.get('token');
+  assert.equal((await(await post(`/package/${id}/info`,{token})).json()).purchased,false);
+  assert.equal((await post(`/package/${id}/authorize_download`,{token})).status,403);
+  const purchase=await(await post(`/package/${id}/purchase`,{token,payment_secret:new URL(signIn.headers.get('location')).searchParams.get('payment_secret')})).json();
+  assert.equal(purchase.status,1);
+  const checkout=await fetch(purchase.url.replace('127.0.0.1:3000',`127.0.0.1:${server.address().port}`),{redirect:'manual'});
+  assert.equal(checkout.status,303);
+  assert.equal(created.line_items[0].price,'price_test_vcam');
+  assert.equal(created.metadata.package_id,id);
+  const event={type:'checkout.session.completed',data:{object:{id:'cs_test_vcam',payment_status:'paid',amount_total:3499,currency:'usd',payment_intent:'pi_test_vcam',metadata:{package_id:id,order_id:created.client_reference_id},customer_details:{email:'vcam@example.com'}}}};
+  const wrongPrice=structuredClone(event);wrongPrice.data.object.amount_total=999;
+  await call('/stripe/webhook',{method:'POST',headers:{'stripe-signature':'valid'},body:JSON.stringify(wrongPrice)});
+  assert.equal((await post(`/package/${id}/authorize_download`,{token})).status,403);
+  await call('/stripe/webhook',{method:'POST',headers:{'stripe-signature':'valid'},body:JSON.stringify(event)});
+  const profile=await(await post('/user_info',{token})).json();
+  assert.deepEqual(profile.items,[id]);
+  assert.equal(profile.user.email,'vcam@example.com');
+  const authorization=await(await post(`/package/${id}/authorize_download`,{token})).json();
+  const url=authorization.url.replace('127.0.0.1:3000',`127.0.0.1:${server.address().port}`);
+  const download=await fetch(url);
+  assert.equal(download.status,200);
+  assert.equal(crypto.createHash('sha256').update(Buffer.from(await download.arrayBuffer())).digest('hex'),'c54ee49436cdd40c0fc3f6277c1cff14749bdec0f79ed2595ab528efd96c0116');
+  assert.equal((await fetch(url)).status,403);
+  assert.equal((await post('/package/com.jimwas.recorder/authorize_download',{token})).status,403);
 });
 
 test.after(async()=>{await new Promise(resolve=>server.close(resolve));app.close();fs.rmSync(tmp,{recursive:true,force:true})});

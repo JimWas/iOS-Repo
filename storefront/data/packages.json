@@ -17,6 +17,23 @@
     "sourceListing": "https://ko-fi.com/s/648175ff01"
   },
   {
+    "slug": "com.yourcompany.vcam",
+    "name": "Instagram Virtual Cam (IG VCAM) Supporter Edition",
+    "icon": "\ud83c\udfa5",
+    "banner": "/images/ig-vcam-demo.png",
+    "category": "Tweaks",
+    "priceCents": 3499,
+    "currency": "usd",
+    "summary": "Use a selected MP4 or MOV as Instagram camera video and recording audio.",
+    "description": "Choose a video in Settings \u2192 VCam, then reopen the Instagram camera to use it as the camera feed. The selected video\u2019s audio replaces recorded microphone audio. This Supporter Edition helps fund JimWas development. Based on VirtualCamera by Ethan Arbuckle; not affiliated with Instagram or Meta. Verified on iOS 18.1.1 with Dopamine; iOS 15\u201317 and other apps have not been retested in this fork. Calls are not supported.",
+    "version": "0.1.1",
+    "ios": "iOS 15+ rootless; verified on iOS 18.1.1",
+    "architecture": "iphoneos-arm64",
+    "packageId": "com.yourcompany.vcam",
+    "sha256": "c54ee49436cdd40c0fc3f6277c1cff14749bdec0f79ed2595ab528efd96c0116",
+    "sourceListing": "https://github.com/JimWas/iOS18-VCAM"
+  },
+  {
     "slug": "com.jimwas.recorder.trial",
     "name": "JimWas Recorder Trial",
     "icon": "/images/jimwas-recorder-icon.png",
