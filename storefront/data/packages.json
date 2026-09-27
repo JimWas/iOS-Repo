@@ -10,22 +10,23 @@
     "summary": "Capture video, photos, and audio with hardware button triggers and Control Center controls.",
     "description": "JimWas Recorder supports background photo, video, and audio capture, configurable volume-button triggers, a companion app, and Control Center modules. Video can use the standard, Ultra Wide, or front camera where supported. Screen-off recording was tested on iOS 18.1.1 with Dopamine; iOS 16.3 was also tested. Other devices and firmware combinations have not been verified.",
     "version": "1.9.5",
-    "ios": "iOS 15\u201316 and iOS 18\u201326 (rootless)",
+    "ios": "iOS 15–16 and iOS 18–26 (rootless)",
     "architecture": "iphoneos-arm64",
     "packageId": "com.jimwas.recorder",
     "sha256": "16ef2cadf4a1c9f772b8262fe3ef4f78c39185a258ffd6243d994d4604133f0c",
-    "sourceListing": "https://ko-fi.com/s/648175ff01"
+    "sourceListing": "https://ko-fi.com/s/648175ff01",
+    "videoId": "C2IJAWxBiVs"
   },
   {
-    "slug": "com.yourcompany.vcam",
+    "slug": "com.jimwas.IGVcam",
     "name": "Instagram Virtual Cam (IG VCAM) Supporter Edition",
-    "icon": "\ud83c\udfa5",
+    "icon": "🎥",
     "banner": "/images/ig-vcam-demo.png",
     "category": "Tweaks",
     "priceCents": 3499,
     "currency": "usd",
     "summary": "Use a selected MP4 or MOV as Instagram camera video and recording audio.",
-    "description": "Choose a video in Settings \u2192 VCam, then reopen the Instagram camera to use it as the camera feed. The selected video\u2019s audio replaces recorded microphone audio. This Supporter Edition helps fund JimWas development. Based on VirtualCamera by Ethan Arbuckle; not affiliated with Instagram or Meta. Verified on iOS 18.1.1 with Dopamine; iOS 15\u201317 and other apps have not been retested in this fork. Calls are not supported.",
+    "description": "Choose a video in Settings → VCam, then reopen the Instagram camera to use it as the camera feed. The selected video’s audio replaces recorded microphone audio. This Supporter Edition helps fund JimWas development. Based on VirtualCamera by Ethan Arbuckle; not affiliated with Instagram or Meta. Verified on iOS 18.1.1 with Dopamine; iOS 15–17 and other apps have not been retested in this fork. Calls are not supported.",
     "version": "0.1.1",
     "ios": "iOS 15+ rootless; verified on iOS 18.1.1",
     "architecture": "iphoneos-arm64",
@@ -47,6 +48,7 @@
     "ios": "iOS 18 (rootless)",
     "architecture": "iphoneos-arm64",
     "packageId": "com.jimwas.recorder.trial",
-    "filename": "com.jimwas.recorder.trial_1.9.5~trial1_iphoneos-arm64.deb"
+    "filename": "com.jimwas.recorder.trial_1.9.5~trial1_iphoneos-arm64.deb",
+    "videoId": "C2IJAWxBiVs"
   }
 ]

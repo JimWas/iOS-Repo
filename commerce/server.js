@@ -18,7 +18,7 @@ const VCAM_FILE = 'com.yourcompany.vcam_0.1.1_iphoneos-arm64.deb';
 const VCAM_HASH = 'c54ee49436cdd40c0fc3f6277c1cff14749bdec0f79ed2595ab528efd96c0116';
 const PRODUCTS = {
   [PACKAGE_ID]: {name:'JimWas Recorder',file:PACKAGE_FILE,hash:EXPECTED_HASH,priceCents:PRICE_CENTS},
-  [VCAM_ID]: {name:'Instagram Virtual Cam (IG VCAM) Supporter Edition',file:VCAM_FILE,hash:VCAM_HASH,priceCents:3499},
+  [VCAM_ID]: {name:'Instagram Virtual Cam (IG VCAM) Supporter Edition',slug:'com.jimwas.IGVcam',file:VCAM_FILE,hash:VCAM_HASH,priceCents:3499},
 };
 const MAX_BODY = 1024 * 1024;
 const secretHash = (value) => crypto.createHash('sha256').update(value).digest('hex');
@@ -90,7 +90,7 @@ export function createApp(config) {
     const id=crypto.randomUUID();
     db.prepare('INSERT INTO orders(id,package_id,status,token_id,udid_hash,created_at) VALUES(?,?,?,?,?,?)').run(id,packageId,'pending',token?.id??null,token?.udid_hash??null,now());
     const letters = [...crypto.randomBytes(8)].map(n=>String.fromCharCode(97+n%26)).join('');
-    const session=await stripe.checkout.sessions.create({mode:'payment',line_items:[{price:priceFor(packageId),quantity:1}],client_reference_id:id,metadata:{order_id:id,package_id:packageId},success_url:`${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,cancel_url:`${origin}/packages/${packageId}/`,integration_identifier:`jimwas-repo-${letters}`});
+    const session=await stripe.checkout.sessions.create({mode:'payment',line_items:[{price:priceFor(packageId),quantity:1}],client_reference_id:id,metadata:{order_id:id,package_id:packageId},success_url:`${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,cancel_url:`${origin}/packages/${product.slug??packageId}/`,integration_identifier:`jimwas-repo-${letters}`});
     db.prepare('UPDATE orders SET session_id=? WHERE id=?').run(session.id,id);
     redirect(res,session.url);
   };
@@ -98,6 +98,9 @@ export function createApp(config) {
     const url=new URL(req.url,origin);const pathname=decodeURIComponent(url.pathname);
     try {
       if(pathname==='/healthz' && req.method==='GET')return json(res,200,{ok:true});
+      if(req.method==='GET' && /^\/packages\/com\.yourcompany\.vcam\/?$/.test(pathname)){
+        res.writeHead(308,{'location':`${origin}/packages/com.jimwas.IGVcam/`,'cache-control':'public, max-age=86400'});res.end();return;
+      }
       if(pathname==='/stripe/webhook' && req.method==='POST') {
         const raw=await readBody(req);let event;
         try {event=stripe.webhooks.constructEvent(raw,req.headers['stripe-signature'],webhookSecret)} catch {return reply(res,400,'Invalid webhook signature')}

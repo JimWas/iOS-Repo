@@ -138,9 +138,12 @@ test('website purchase code binds a paid order to one device',async()=>{
 
 test('IG VCAM has its own paid checkout, ownership, and private download',async()=>{
   const id='com.yourcompany.vcam';
-  const page=await call(`/packages/${id}`);
+  const page=await call('/packages/com.jimwas.IGVcam');
   assert.equal(page.status,200);
   assert.match(await page.text(),/IG VCAM/);
+  const oldPage=await call(`/packages/${id}`);
+  assert.equal(oldPage.status,308);
+  assert.equal(oldPage.headers.get('location'),'http://127.0.0.1:3000/packages/com.jimwas.IGVcam/');
   assert.match(await(await call('/Packages')).text(),/Package: com\.yourcompany\.vcam[\s\S]*Tag: cydia::commercial/);
   assert.equal((await call('/private/com.yourcompany.vcam_0.1.1_iphoneos-arm64.deb')).status,403);
   const signIn=await call('/authenticate',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:'udid=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'});
@@ -153,6 +156,7 @@ test('IG VCAM has its own paid checkout, ownership, and private download',async(
   assert.equal(checkout.status,303);
   assert.equal(created.line_items[0].price,'price_test_vcam');
   assert.equal(created.metadata.package_id,id);
+  assert.equal(created.cancel_url,'http://127.0.0.1:3000/packages/com.jimwas.IGVcam/');
   const event={type:'checkout.session.completed',data:{object:{id:'cs_test_vcam',payment_status:'paid',amount_total:3499,currency:'usd',payment_intent:'pi_test_vcam',metadata:{package_id:id,order_id:created.client_reference_id},customer_details:{email:'vcam@example.com'}}}};
   const wrongPrice=structuredClone(event);wrongPrice.data.object.amount_total=999;
   await call('/stripe/webhook',{method:'POST',headers:{'stripe-signature':'valid'},body:JSON.stringify(wrongPrice)});
