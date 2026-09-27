@@ -16,6 +16,8 @@ const PRICE_CENTS = 3499;
 const VCAM_ID = 'com.yourcompany.vcam';
 const VCAM_FILE = 'com.yourcompany.vcam_0.1.1_iphoneos-arm64.deb';
 const VCAM_HASH = 'c54ee49436cdd40c0fc3f6277c1cff14749bdec0f79ed2595ab528efd96c0116';
+const TRIAL_ID = 'com.jimwas.recorder.trial';
+const TRIAL_FILE = 'com.jimwas.recorder.trial_1.9.5~trial1_iphoneos-arm64.deb';
 const PRODUCTS = {
   [PACKAGE_ID]: {name:'JimWas Recorder',file:PACKAGE_FILE,hash:EXPECTED_HASH,priceCents:PRICE_CENTS},
   [VCAM_ID]: {name:'Instagram Virtual Cam (IG VCAM) Supporter Edition',slug:'com.jimwas.IGVcam',file:VCAM_FILE,hash:VCAM_HASH,priceCents:3499},
@@ -181,6 +183,7 @@ export function createApp(config) {
       const buy=pathname.match(/^\/buy\/([^/]+)$/);
       if(buy && req.method==='POST') {
         if(req.headers.origin!==origin)return reply(res,403,'Invalid origin');
+        if(buy[1]===TRIAL_ID)return redirect(res,`${origin}/${TRIAL_FILE}`);
         return await beginCheckout(res,buy[1]);
       }
       if(pathname==='/checkout/success' && req.method==='GET') {

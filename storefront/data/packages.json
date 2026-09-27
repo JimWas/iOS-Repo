@@ -20,7 +20,7 @@
   {
     "slug": "com.jimwas.IGVcam",
     "name": "Instagram Virtual Cam (IG VCAM) Supporter Edition",
-    "icon": "🎥",
+    "icon": "/images/ig-vcam-icon.png",
     "banner": "/images/ig-vcam-demo.png",
     "category": "Tweaks",
     "priceCents": 3499,
@@ -37,7 +37,7 @@
   {
     "slug": "com.jimwas.recorder.trial",
     "name": "JimWas Recorder Trial",
-    "icon": "/images/jimwas-recorder-icon.png",
+    "icon": "/images/jimwas-recorder-trial-icon.png",
     "banner": "/images/jimwas-recorder-banner-compatibility.png",
     "category": "Tweaks",
     "priceCents": 0,

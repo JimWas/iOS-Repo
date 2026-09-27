@@ -104,6 +104,10 @@ test('trial is free to download while paid files stay private',async()=>{
   const page=await call('/packages/com.jimwas.recorder.trial');
   assert.equal(page.status,200);
   assert.match(await page.text(),/Download free trial/);
+  assert.doesNotMatch(await(await call('/packages/com.jimwas.recorder.trial')).text(),/Buy with Stripe/);
+  const oldTrialButton=await call('/buy/com.jimwas.recorder.trial',{method:'POST',headers:{origin:'http://127.0.0.1:3000'}});
+  assert.equal(oldTrialButton.status,303);
+  assert.equal(oldTrialButton.headers.get('location'),`http://127.0.0.1:3000/${filename}`);
   const index=await(await call('/Packages')).text();
   assert.match(index,/Package: com\.jimwas\.recorder\.trial/);
   assert.match(index,new RegExp(`Filename: ${filename.replaceAll('.', '\\.').replace('~', '\\~')}`));
